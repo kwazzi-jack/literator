@@ -18,21 +18,57 @@ This tool helps fetch paper information from multiple API sources for a systemat
 
 ## Usage
 
-To search for papers, use the `fetcher.py` script:
+The tool provides three main commands:
+
+### Fetching Papers
 
 ```bash
 # Basic search
-python fetcher.py --query "large language models AND astronomy"
+python fetcher.py fetch --query "large language models AND astronomy"
 
 # Search with year range and max results
-python fetcher.py --query "LLM AND (radio astronomy OR astrophysics)" --start-year 2020 --end-year 2023 --max-results 200
+python fetcher.py fetch --query "LLM AND (radio astronomy OR astrophysics)" \
+                        --start-year 2020 --end-year 2023 --max-results 200
 
 # Specify output file
-python fetcher.py --query "transformer models AND science" --output "results/transformer_papers.json"
+python fetcher.py fetch --query "transformer models AND science" \
+                        --output "results/transformer_papers.json"
 
 # Save to vault storage
-python fetcher.py --query "LLM applications" --use-vault
+python fetcher.py fetch --query "LLM applications" --use-vault
+
+# Don't save to database
+python fetcher.py fetch --query "LLM applications" --no-db
 ```
+
+### Querying the Database
+
+```bash
+# Simple query
+python fetcher.py query --query "transformer"
+
+# Filter by source and year
+python fetcher.py query --source "scopus" --start-year 2020 --end-year 2022
+
+# Save query results to file
+python fetcher.py query --query "astronomy" --output "results/astronomy_papers.json"
+```
+
+### Viewing Database Statistics
+
+```bash
+python fetcher.py stats
+```
+
+## Database
+
+The tool uses SQLModel to store all fetched papers in a SQLite database, making it easy to:
+- Avoid duplicate entries
+- Query papers using different criteria
+- Perform analysis across multiple sources
+- Track citation counts over time
+
+The database is stored in the configured vault location.
 
 ## API Sources
 
@@ -45,7 +81,3 @@ Planned:
 - NASA ADS
 - IEEE Xplore
 - Others relevant to astronomy and astrophysics
-
-## Data Model
-
-The tool converts all paper information to a standard format, making it easier to combine results from different sources. See `models.py` for details.
