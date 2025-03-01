@@ -1,0 +1,23 @@
+[project]
+name = "litreview"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "brianwelman2", email = "brianallisterwelman@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "icecream>=2.1.4",
+    "matplotlib>=3.10.0",
+    "numpy>=2.2.3",
+    "pandas>=2.2.3",
+    "pydantic>=2.10.6",
+    "python-dotenv>=1.0.1",
+    "requests>=2.32.3",
+    "rich>=13.9.4",
+    "scipy>=1.15.2",
+    "seaborn>=0.13.2",
+    "sqlmodel>=0.0.22",
+    "tqdm>=4.67.1",
+]
