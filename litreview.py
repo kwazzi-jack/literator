@@ -3,8 +3,9 @@ import sys
 import json
 import logging
 from pathlib import Path
-from datetime import datetime
-from typing import Optional, List
+from datetime import datetime, timezone
+from dataclasses import asdict
+from typing import Literal, Optional, List
 
 import click
 from rich.console import Console
@@ -13,7 +14,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from models import Paper
-from scopus_client import ScopusClient
+from api_clients import get_api_client
 from config import VAULT_PATH, REQUESTS_DIR
 from db_handler import (
     init_db,
@@ -45,7 +46,14 @@ def setup_basic_logging():
     return logging.getLogger("litreview")
 
 
-def save_results(papers: List[Paper], output_path: Path):
+def save_json(
+    papers: List[Paper],
+    query: str,
+    timestamp: str,
+    source: Literal["scopus"],
+    start_year: Optional[int] = None,
+    end_year: Optional[int] = None,
+):
     """Save papers to a JSON file."""
     # Convert Pydantic models to dictionaries
     papers_dict = []
@@ -68,23 +76,37 @@ def save_results(papers: List[Paper], output_path: Path):
         except Exception as e:
             logger.error(f"Error processing paper for JSON: {str(e)}")
 
+    # Construct outer dictionary
+    results_dict = {
+        "papers": papers_dict,
+        "count": len(papers_dict),
+        "query": query,
+        "timestamp": timestamp,
+        "start_year": start_year,
+        "end_year": end_year,
+        "source": source,
+    }
+
+    # Construct output path
+    output_path = REQUESTS_DIR / f"{source}_{timestamp}.json"
+
     # Create directory if it doesn't exist
     output_path.parent.mkdir(exist_ok=True, parents=True)
 
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(papers_dict, f, ensure_ascii=False, indent=2)
+        json.dump(results_dict, f, ensure_ascii=False, indent=4)
 
     logger.info(f"Saved {len(papers)} papers to {output_path}")
 
 
 def fetch_papers(
+    client_name: Literal["scopus"],
     query: str,
     start_year: Optional[int] = None,
     end_year: Optional[int] = None,
     max_results: int = 100,
-    output_file: Optional[Path] = None,
-    use_vault: bool = False,
     save_to_db: bool = True,
+    save_to_json: bool = True,
 ) -> List[Paper]:
     """
     Fetch papers from Scopus API.
@@ -104,12 +126,16 @@ def fetch_papers(
     logger.info(f"Searching for: {query}")
     logger.info(f"Year range: {start_year or 'any'} to {end_year or 'any'}")
 
+    # Get relevant API client
+    client = get_api_client(client_name)
+
+    # Get timestamp
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
     # Initialize Scopus client
     try:
-        scopus_client = ScopusClient()
-
         # Search Scopus
-        papers = scopus_client.search(
+        papers = client.search(
             query=query,
             start_year=start_year,
             end_year=end_year,
@@ -130,18 +156,11 @@ def fetch_papers(
                 logger.error(f"Error saving to database: {str(e)}")
 
         # Save results to JSON if output file is specified
-        if output_file:
-            save_results(papers, output_file)
-
-        # Save to vault if requested
-        if use_vault:
-            # Make sure vault directory exists
-            VAULT_PATH.mkdir(exist_ok=True, parents=True)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            query_slug = query.replace(" ", "_").replace("/", "_")[:50]
-            vault_file = VAULT_PATH / f"scopus_{query_slug}_{timestamp}.json"
-            save_results(papers, vault_file)
-            logger.info(f"Also saved results to vault: {vault_file}")
+        if save_to_json:
+            save_json(
+                papers,
+                query,
+            )
 
         return papers
 
@@ -185,7 +204,6 @@ def query_database(
     start_year: Optional[int] = None,
     end_year: Optional[int] = None,
     limit: int = 100,
-    output_file: Optional[str] = None,
 ):
     """Query the database for papers"""
     try:
@@ -220,40 +238,10 @@ def query_database(
 
         # Save to file if requested
         if output_file:
-            save_results(papers, Path(output_file))
+            save_json(papers, Path(output_file))
 
     except Exception as e:
         logger.error(f"Error querying database: {str(e)}")
-
-
-def simple_fetch(
-    query: str,
-    start_year: Optional[int] = None,
-    end_year: Optional[int] = None,
-    max_results: int = 100,
-    output_file: Optional[str] = None,
-) -> List[Paper]:
-    """
-    Simplified version of fetcher for direct script usage.
-    Does not use database or vault features.
-
-    Args:
-        query: Search query
-        start_year: Optional start year for filtering
-        end_year: Optional end year for filtering
-        max_results: Maximum number of results to fetch
-        output_file: File to save results to
-    """
-    output_path = Path(output_file) if output_file else None
-    return fetch_papers(
-        query=query,
-        start_year=start_year,
-        end_year=end_year,
-        max_results=max_results,
-        output_file=output_path,
-        use_vault=False,
-        save_to_db=False,
-    )
 
 
 # Click commands
@@ -264,67 +252,42 @@ def fetch_cli():
 
 
 @fetch_cli.command("scopus")
-@click.option("--query", required=True, help="Search query")
+@click.option("--query", type=str, required=True, help="Search query")
 @click.option("--start-year", type=int, help="Start year for filtering results")
 @click.option("--end-year", type=int, help="End year for filtering results")
 @click.option(
     "--max-results", type=int, default=100, help="Maximum number of results to fetch"
 )
-@click.option("--output", type=str, help="Output file path (JSON). Defaults to requests directory.")
-@click.option("--use-vault", is_flag=True, help="Save results to vault storage")
 @click.option("--no-db", is_flag=True, help="Don't save results to the database")
+@click.option("--no-json", is_flag=True, help="Don't save results to the json")
 def fetch_scopus_command(
-    query, start_year, end_year, max_results, output, use_vault, no_db
+    query: str,
+    start_year: int,
+    end_year: int,
+    max_results: int,
+    no_db: bool,
+    no_json: bool,
 ):
     """Fetch papers from APIs"""
-    # Generate default output filename if none provided
-    output_file = None
-    if output:
-        output_file = Path(output)
-    else:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = REQUESTS_DIR / f"scopus_{timestamp}.json"
 
     # Fetch papers
     fetch_papers(
+        client_name="scopus",
         query=query,
         start_year=start_year,
         end_year=end_year,
         max_results=max_results,
-        output_file=output_file,
-        use_vault=use_vault,
         save_to_db=not no_db,
+        save_to_json=not no_json,
     )
 
-
-@fetch_cli.command("simple")
-@click.option("--query", required=True, help="Search query")
-@click.option("--start-year", type=int, help="Start year for filtering results")
-@click.option("--end-year", type=int, help="End year for filtering results")
-@click.option(
-    "--max-results", type=int, default=100, help="Maximum number of results to fetch"
-)
-@click.option("--output", help="Output file path (JSON)")
-def simple_command(query, start_year, end_year, max_results, output):
-    """Simple paper fetch without database/vault features"""
-    # Generate default output filename if none provided
-    if not output:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output = f"{REQUESTS_DIR}/scopus_{timestamp}.json"
-
-    # Simple fetch (mimicking old fetch_papers.py behavior)
-    simple_fetch(
-        query=query,
-        start_year=start_year,
-        end_year=end_year,
-        max_results=max_results,
-        output_file=output,
-    )
 
 @fetch_cli.command("results")
 @click.option("--file", help="Specific results file to view (defaults to most recent)")
 @click.option("--count", type=int, default=10, help="Number of papers to display")
-@click.option("--open", "should_open", is_flag=True, help="Open the file in default application")
+@click.option(
+    "--open", "should_open", is_flag=True, help="Open the file in default application"
+)
 def fetch_results_command(file, count, should_open):
     """View results from a recent Scopus API call"""
     try:
@@ -358,28 +321,30 @@ def fetch_results_command(file, count, should_open):
             papers_dict = json.load(f)
 
         # Display basic info with colors
-        console.print(Panel(
-            f"[bold blue]Results file:[/bold blue] [cyan]{file_path}[/cyan]\n"
-            f"[bold blue]Total papers:[/bold blue] [green]{len(papers_dict)}[/green]",
-            border_style="bright_blue"
-        ))
+        console.print(
+            Panel(
+                f"[bold blue]Results file:[/bold blue] [cyan]{file_path}[/cyan]\n"
+                f"[bold blue]Total papers:[/bold blue] [green]{len(papers_dict)}[/green]",
+                border_style="bright_blue",
+            )
+        )
 
         # Show papers in a table with improved styling
         table = Table(
             title="Paper Results",
             title_style="bold blue",
             header_style="bold cyan",
-            border_style="bright_blue"
+            border_style="bright_blue",
         )
-        table.add_column("UUID", style="magenta")
+        table.add_column("ID", style="magenta")
         table.add_column("Title", width=50, style="bright_white")
         table.add_column("Year", style="green")
         table.add_column("Authors", width=30, style="yellow")
         table.add_column("Citations", width=10, style="cyan")
 
         for paper in papers_dict[:count]:
-            # Get UUID of paper (if available)
-            paper_uuid = paper.get("uuid", "")
+            # Get ID of paper
+            paper_id = paper.get("id", "N/A")
 
             # Extract data from the paper dict
             title = paper.get("title", "Unknown")
@@ -402,14 +367,16 @@ def fetch_results_command(file, count, should_open):
                 if len(paper_authors) > 2:
                     authors += " et al."
 
-            citations = str(paper.get("citations", "N/A"))
+            citations = str(paper.get("citation_count", "N/A"))
 
-            table.add_row(paper_uuid, title, year, authors, citations)
+            table.add_row(paper_id, title, year, authors, citations)
 
         console.print(table)
 
         if len(papers_dict) > count:
-            console.print(f"[dim italic](Showing {count} of {len(papers_dict)} papers)[/dim italic]")
+            console.print(
+                f"[dim italic](Showing {count} of {len(papers_dict)} papers)[/dim italic]"
+            )
 
         # Open file if requested
         if should_open:
