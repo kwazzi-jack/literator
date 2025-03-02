@@ -14,7 +14,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from models import Paper
-from api_clients import get_api_client
+from api_clients import APIClient, get_api_client
 from config import VAULT_PATH, REQUESTS_DIR
 from db_handler import (
     init_db,
@@ -131,10 +131,12 @@ def fetch_papers(
     logger.info(f"Year range: {start_year or 'any'} to {end_year or 'any'}")
 
     # Get relevant API client
-    client = get_api_client(client_name)
+    client: APIClient = get_api_client(client_name)
+    logger.info(f"Using {client_name} API client")
 
     # Get timestamp
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = get_timestamp()
+    logger.info(f"Timestamp: {timestamp}")
 
     # Initialize Scopus client
     try:
@@ -161,10 +163,18 @@ def fetch_papers(
 
         # Save results to JSON if output file is specified
         if save_to_json:
-            save_json(
-                papers,
-                query,
-            )
+            try:
+                save_json(
+                    papers,
+                    query,
+                    timestamp,
+                    client.name,
+                    start_year,
+                    end_year,
+                )
+                logger.info("Saved results to JSON file")
+            except Exception as e:
+                logger.error(f"Error saving to JSON: {str(e)}")
 
         return papers
 
