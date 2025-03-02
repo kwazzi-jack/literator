@@ -6,7 +6,7 @@ from sqlalchemy import func as sqlalchemy_func
 from sqlmodel import Session, SQLModel, create_engine, select, or_
 from rich.console import Console
 
-from models import Paper, PaperDB, AuthorDB, Keyword
+from models import Paper, PaperDB, AuthorDB, Keyword, PaperAuthorLink
 from config import VAULT_PATH
 
 # Configure logging
@@ -48,7 +48,7 @@ def save_papers_to_db(papers: List[Paper]) -> int:
                 skipped_count += 1
                 continue
 
-            # Check if the paper already exists
+            # Check if the paper already exists by DOI
             existing_paper = session.exec(
                 select(PaperDB).where(PaperDB.doi == paper.doi)
             ).first()
@@ -61,13 +61,25 @@ def save_papers_to_db(papers: List[Paper]) -> int:
                 ):
                     existing_paper.citations = paper.citations
                     session.add(existing_paper)
+
+                # Store the existing UUID for potential reference
+                paper.uuid = existing_paper.uuid
+
                 skipped_count += 1
                 continue
 
             # Convert to database model and add
             paper_db = PaperDB.from_paper(paper)
+
             try:
                 session.add(paper_db)
+
+                # Save paper-author links
+                for author in paper.authors:
+                    # Create paper-author link
+                    link = PaperAuthorLink(paper_uuid=paper.uuid, author_uuid=author.uuid)
+                    session.add(link)
+
                 session.commit()
                 added_count += 1
             except IntegrityError:
@@ -87,7 +99,7 @@ def get_papers_from_db(
     start_year: Optional[int] = None,
     end_year: Optional[int] = None,
     limit: int = 100,
-) -> List[Paper]:
+) -> List<Paper]:
     """
     Retrieve papers from the database with optional filtering.
 
@@ -134,7 +146,19 @@ def get_papers_from_db(
         results = session.exec(statement).all()
 
         # Convert to Paper objects
-        papers = [result.to_paper() for result in results]
+        papers = []
+        for result in results:
+            paper = result.to_paper()
+
+            # Get all author-paper links for this paper
+            author_links = session.exec(
+                select(PaperAuthorLink).where(PaperAuthorLink.paper_uuid == paper.uuid)
+            ).all()
+
+            # Update author_uuids
+            paper.author_uuids = [link.author_uuid for link in author_links]
+
+            papers.append(paper)
 
     return papers
 
@@ -153,7 +177,7 @@ def get_stats() -> Dict[str, Any]:
 
         # Count papers by source
         sources_query = select(
-            PaperDB.source, sqlalchemy_func.count(PaperDB.id)
+            PaperDB.source, sqlalchemy_func.count(PaperDB.uid)
         ).group_by(PaperDB.source)
         sources = {source: count for source, count in session.exec(sources_query).all()}
 

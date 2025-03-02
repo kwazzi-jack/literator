@@ -173,6 +173,14 @@ class ScopusClient:
                         "eid": entry.get("eid", None),
                     },
                 )
+
+                # Extract author UUIDs
+                paper.author_uuids = [author.uuid for author in authors]
+
+                # Add paper UUIDs to authors
+                for author in paper.authors:
+                    author.paper_uuids.append(paper.uuid)
+
                 papers.append(paper)
             except Exception as e:
                 logger.error(f"Error parsing Scopus entry: {e}")
