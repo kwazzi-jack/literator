@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from datetime import datetime, timezone
 from dataclasses import asdict
-from typing import Literal, Optional, List
+from typing import Dict, Literal, Optional, List
 
 import click
 from rich.console import Console
@@ -327,41 +327,61 @@ def fetch_results_command(file, count):
 
         # Read the JSON file
         with open(file_path, "r", encoding="utf-8") as f:
-            papers_dict = json.load(f)
+            results_dict: Dict[str, str] = json.load(f)
+
+        # Load results values
+        query = results_dict.get("query", "Unknown")
+        timestamp = results_dict.get("timestamp")
+        if timestamp:
+            timestamp_str = datetime.strptime(timestamp, "%Y%m%d_%H%M%S")
+            timestamp = timestamp_str.strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            timestamp = "Unknown"
+        start_year = results_dict.get("start_year")
+        end_year = results_dict.get("end_year")
+        source = results_dict.get("source", "Unknown")
+        papers_dict = results_dict.get("papers", {})
 
         # Display basic info with colors
         console.print(
             Panel(
-                f"[bold blue]Results file:[/bold blue] [cyan]{file_path}[/cyan]\n"
-                f"[bold blue]Total papers:[/bold blue] [green]{len(papers_dict)}[/green]",
+                "\n".join(
+                    [
+                        f"[bold blue]Request file:[/bold blue] [cyan]{file_path}[/cyan]",
+                        f"[bold blue]Total papers:[/bold blue] [green]{len(papers_dict)}[/green]",
+                        f"[bold blue]Query:[/bold blue] '[yellow]{query}[/yellow]'",
+                        f"[bold blue]Timestamp:[/bold blue] [magenta]{timestamp}[/magenta]",
+                        f"[bold blue]Source:[/bold blue] [yellow]{source.capitalize()}[/yellow]",
+                        f"[bold blue]Start year:[/bold blue] [green]{start_year}[/green]",
+                        f"[bold blue]End year:[/bold blue] [green]{end_year}[/green]",
+                    ]
+                ),
+                title="Request Summary",
                 border_style="bright_blue",
             )
         )
 
-        # Show papers in a table with improved styling
+        # Show papers in a table with improved styling and word wrap
         table = Table(
-            title="Paper Results",
+            title="Papers Summary",
             title_style="bold blue",
             header_style="bold cyan",
             border_style="bright_blue",
+            show_lines=True,  # Add lines between rows for better readability
         )
-        table.add_column("ID", style="magenta")
-        table.add_column("Title", width=50, style="bright_white")
-        table.add_column("Year", style="green")
+        table.add_column("#", style="magenta", width=3, justify="right")
+        table.add_column("Title", style="bright_white", width=40, overflow="fold")
+        table.add_column("Year", style="green", width=6, justify="center")
         table.add_column("Authors", width=30, style="yellow")
-        table.add_column("Citations", width=10, style="cyan")
+        table.add_column("Journal", width=30, style="blue", overflow="fold")
 
-        for paper in papers_dict[:count]:
-            # Get ID of paper
-            paper_id = paper.get("id", "N/A")
+        for i, paper in enumerate(papers_dict[:count]):
 
             # Extract data from the paper dict
             title = paper.get("title", "Unknown")
-            if len(title) > 47:
-                title = title[:47] + "..."
 
             # Get year from publication date
-            year = "N/A"
+            year = "?"
             if pub_date := paper.get("publication_date"):
                 try:
                     year = pub_date.split("-")[0]  # Get year from YYYY-MM-DD
@@ -376,9 +396,15 @@ def fetch_results_command(file, count):
                 if len(paper_authors) > 2:
                     authors += " et al."
 
-            citations = str(paper.get("citation_count", "N/A"))
+            # Format journal - don't truncate, let rich handle wrapping
+            journal = paper.get("journal", "Unknown")
 
-            table.add_row(paper_id, title, year, authors, citations)
+            # Format number
+            row_num = str(i + 1)
+            if len(row_num) > 3:
+                row_num = row_num[-3:]
+
+            table.add_row(row_num, title, year, authors, journal)
 
         console.print(table)
 
