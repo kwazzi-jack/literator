@@ -4,16 +4,17 @@ import json
 import logging
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 
 import click
 from rich.console import Console
 from rich.logging import RichHandler
+from rich.panel import Panel
 from rich.table import Table
 
 from models import Paper
 from scopus_client import ScopusClient
-from config import VAULT_PATH, RESULTS_DIR
+from config import VAULT_PATH, REQUESTS_DIR
 from db_handler import (
     init_db,
     save_papers_to_db,
@@ -52,7 +53,7 @@ def save_results(papers: List[Paper], output_path: Path):
         try:
             # Handle both Pydantic models and dataclasses
             if hasattr(paper, "dict"):
-                paper_dict = paper.dict()
+                paper_dict = paper.model_dump()
             else:
                 from dataclasses import asdict
 
@@ -233,7 +234,7 @@ def simple_fetch(
     output_file: Optional[str] = None,
 ) -> List[Paper]:
     """
-    Simplified version of fetch_papers for direct script usage.
+    Simplified version of fetcher for direct script usage.
     Does not use database or vault features.
 
     Args:
@@ -256,25 +257,25 @@ def simple_fetch(
 
 
 # Click commands
-
-
-@click.group()
-def cli():
+@click.group(name="fetch")
+def fetch_cli():
     """Fetch and manage papers for literature review"""
     pass
 
 
-@cli.command("fetch")
+@fetch_cli.command("scopus")
 @click.option("--query", required=True, help="Search query")
 @click.option("--start-year", type=int, help="Start year for filtering results")
 @click.option("--end-year", type=int, help="End year for filtering results")
 @click.option(
     "--max-results", type=int, default=100, help="Maximum number of results to fetch"
 )
-@click.option("--output", type=str, help="Output file path (JSON)")
+@click.option("--output", type=str, help="Output file path (JSON). Defaults to requests directory.")
 @click.option("--use-vault", is_flag=True, help="Save results to vault storage")
 @click.option("--no-db", is_flag=True, help="Don't save results to the database")
-def fetch_command(query, start_year, end_year, max_results, output, use_vault, no_db):
+def fetch_scopus_command(
+    query, start_year, end_year, max_results, output, use_vault, no_db
+):
     """Fetch papers from APIs"""
     # Generate default output filename if none provided
     output_file = None
@@ -282,8 +283,7 @@ def fetch_command(query, start_year, end_year, max_results, output, use_vault, n
         output_file = Path(output)
     else:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        query_slug = query.replace(" ", "_").replace("/", "_")[:50]
-        output_file = RESULTS_DIR / f"scopus_{query_slug}_{timestamp}.json"
+        output_file = REQUESTS_DIR / f"scopus_{timestamp}.json"
 
     # Fetch papers
     fetch_papers(
@@ -297,7 +297,144 @@ def fetch_command(query, start_year, end_year, max_results, output, use_vault, n
     )
 
 
-@cli.command("query")
+@fetch_cli.command("simple")
+@click.option("--query", required=True, help="Search query")
+@click.option("--start-year", type=int, help="Start year for filtering results")
+@click.option("--end-year", type=int, help="End year for filtering results")
+@click.option(
+    "--max-results", type=int, default=100, help="Maximum number of results to fetch"
+)
+@click.option("--output", help="Output file path (JSON)")
+def simple_command(query, start_year, end_year, max_results, output):
+    """Simple paper fetch without database/vault features"""
+    # Generate default output filename if none provided
+    if not output:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output = f"{REQUESTS_DIR}/scopus_{timestamp}.json"
+
+    # Simple fetch (mimicking old fetch_papers.py behavior)
+    simple_fetch(
+        query=query,
+        start_year=start_year,
+        end_year=end_year,
+        max_results=max_results,
+        output_file=output,
+    )
+
+@fetch_cli.command("results")
+@click.option("--file", help="Specific results file to view (defaults to most recent)")
+@click.option("--count", type=int, default=10, help="Number of papers to display")
+@click.option("--open", "should_open", is_flag=True, help="Open the file in default application")
+def fetch_results_command(file, count, should_open):
+    """View results from a recent Scopus API call"""
+    try:
+        # Find the most recent results file if not specified
+        if not file:
+            if not REQUESTS_DIR.exists():
+                console.print("[yellow]No requests directory found.[/yellow]")
+                return
+
+            files = list(REQUESTS_DIR.glob("scopus_*.json"))
+            if not files:
+                console.print("[yellow]No recent search results found.[/yellow]")
+                return
+
+            # Sort by modification time, newest first
+            files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+            file = str(files[0])
+
+        # Convert to Path if string
+        if isinstance(file, str):
+            file_path = Path(file)
+        else:
+            file_path = file
+
+        if not file_path.exists():
+            console.print(f"[red]File not found: {file_path}[/red]")
+            return
+
+        # Read the JSON file
+        with open(file_path, "r", encoding="utf-8") as f:
+            papers_dict = json.load(f)
+
+        # Display basic info with colors
+        console.print(Panel(
+            f"[bold blue]Results file:[/bold blue] [cyan]{file_path}[/cyan]\n"
+            f"[bold blue]Total papers:[/bold blue] [green]{len(papers_dict)}[/green]",
+            border_style="bright_blue"
+        ))
+
+        # Show papers in a table with improved styling
+        table = Table(
+            title="Paper Results",
+            title_style="bold blue",
+            header_style="bold cyan",
+            border_style="bright_blue"
+        )
+        table.add_column("UUID", style="magenta")
+        table.add_column("Title", width=50, style="bright_white")
+        table.add_column("Year", style="green")
+        table.add_column("Authors", width=30, style="yellow")
+        table.add_column("Citations", width=10, style="cyan")
+
+        for paper in papers_dict[:count]:
+            # Get UUID of paper (if available)
+            paper_uuid = paper.get("uuid", "")
+
+            # Extract data from the paper dict
+            title = paper.get("title", "Unknown")
+            if len(title) > 47:
+                title = title[:47] + "..."
+
+            # Get year from publication date
+            year = "N/A"
+            if pub_date := paper.get("publication_date"):
+                try:
+                    year = pub_date.split("-")[0]  # Get year from YYYY-MM-DD
+                except (IndexError, AttributeError):
+                    pass
+
+            # Format authors
+            authors = "Unknown"
+            if paper_authors := paper.get("authors", []):
+                author_names = [a.get("name", "Unknown") for a in paper_authors[:2]]
+                authors = ", ".join(author_names)
+                if len(paper_authors) > 2:
+                    authors += " et al."
+
+            citations = str(paper.get("citations", "N/A"))
+
+            table.add_row(paper_uuid, title, year, authors, citations)
+
+        console.print(table)
+
+        if len(papers_dict) > count:
+            console.print(f"[dim italic](Showing {count} of {len(papers_dict)} papers)[/dim italic]")
+
+        # Open file if requested
+        if should_open:
+            click.launch(str(file_path))
+            console.print("[green]Opening file in default application...[/green]")
+
+    except Exception as e:
+        logger.error(f"Error displaying results: {str(e)}")
+        console.print(f"[red]Error displaying results: {str(e)}[/red]")
+
+
+@click.group(name="papers")
+def papers_cli():
+    """Manage papers in the database"""
+    pass
+
+
+@papers_cli.command("init")
+def init_command():
+    """Initialize the database"""
+    init_db()
+    logger.info("Database initialized")
+
+
+@papers_cli.command("query")
 @click.option("--query", help="Search term for titles, abstracts, or keywords")
 @click.option("--source", help="Filter by source (e.g., scopus, arxiv)")
 @click.option("--start-year", type=int, help="Start year for filtering results")
@@ -316,49 +453,7 @@ def query_command(query, source, start_year, end_year, limit, output):
     )
 
 
-@cli.command("stats")
+@papers_cli.command("stats")
 def stats_command():
     """Display database statistics"""
     display_stats()
-
-
-@cli.command("simple")
-@click.option("--query", required=True, help="Search query")
-@click.option("--start-year", type=int, help="Start year for filtering results")
-@click.option("--end-year", type=int, help="End year for filtering results")
-@click.option(
-    "--max-results", type=int, default=100, help="Maximum number of results to fetch"
-)
-@click.option("--output", help="Output file path (JSON)")
-def simple_command(query, start_year, end_year, max_results, output):
-    """Simple paper fetch without database/vault features"""
-    # Generate default output filename if none provided
-    if not output:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        query_slug = query.replace(" ", "_").replace("/", "_")[:50]
-        output = f"{RESULTS_DIR}/scopus_{query_slug}_{timestamp}.json"
-
-    # Simple fetch (mimicking old fetch_papers.py behavior)
-    simple_fetch(
-        query=query,
-        start_year=start_year,
-        end_year=end_year,
-        max_results=max_results,
-        output_file=output,
-    )
-
-
-def main():
-    """Main entry point for the CLI"""
-    try:
-        cli()
-    except KeyboardInterrupt:
-        logger.info("Process interrupted by user")
-        sys.exit(0)
-    except Exception as e:
-        logger.exception(f"Unexpected error: {str(e)}")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
