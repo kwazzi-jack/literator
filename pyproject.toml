@@ -1,7 +1,7 @@
 [project]
 name = "litreview"
 version = "0.1.0"
-description = "Add your description here"
+description = "Respository of tools to perform a systematic literature review analysis using the PRISMA Guidelines."
 readme = "README.md"
 authors = [
     { name = "kwazzi-jack", email = "brianallisterwelman@gmail.com" }
@@ -21,3 +21,11 @@ dependencies = [
     "sqlmodel>=0.0.22",
     "tqdm>=4.67.1",
 ]
+
+[project.scripts]
+fetch = "litreview:fetch_cli"
+papers = "litreview:papers_cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
