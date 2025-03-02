@@ -46,6 +46,10 @@ def setup_basic_logging():
     return logging.getLogger("litreview")
 
 
+def get_timestamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
+
 def save_json(
     papers: List[Paper],
     query: str,
@@ -200,10 +204,12 @@ def display_stats():
 
 def query_database(
     query: str = None,
-    source: str = None,
+    source: Optional[Literal["scopus"]] = None,
     start_year: Optional[int] = None,
     end_year: Optional[int] = None,
     limit: int = 100,
+    print_results: bool = True,
+    save_to_json: bool = True,
 ):
     """Query the database for papers"""
     try:
@@ -237,8 +243,11 @@ def query_database(
             console.print(f"[italic](Showing 10 of {len(papers)} results)[/italic]")
 
         # Save to file if requested
-        if output_file:
-            save_json(papers, Path(output_file))
+        if save_to_json:
+            save_json(
+                papers,
+                query,
+            )
 
     except Exception as e:
         logger.error(f"Error querying database: {str(e)}")
