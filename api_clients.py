@@ -10,23 +10,51 @@ logger = logging.getLogger(__name__)
 
 
 class Client:
-    pass
+    def __init__(
+        self, name: str, api_key: Optional[str] = None, api_url: Optional[str] = None
+    ):
+        self.name = name
+        capt_name = self.name.capitalize()
+        logger.info(f"Initializing {capt_name} API client...")
+
+        # Get API configuration based on name
+        config = get_api_config()[self.name]
+
+        # Look for API Key
+        self.api_key = api_key or config["api_key"]
+        if not self.api_key:
+            err_msg = f"API key is required for {capt_name}. Set it in your .env file."
+            logger.error(err_msg)
+            raise ValueError(err_msg)
+        else:
+            logger.debug(f"API key found for {capt_name}")
+
+        # Look for API URL
+        self.api_url = api_url or config.get("api_url")
+        if not self.api_url:
+            raise ValueError(
+                f"API URL is required for {capt_name}. Set it in your .env file."
+            )
+        else:
+            logger.debug(f"API URL found for {capt_name}")
+
+        # Fetch other settings
+        self.timeout = config["timeout"]
+        self.max_results_per_request = config["max_results_per_request"]
+        logger.debug(f"Timeout: {self.timeout}")
+        logger.debug(f"Max results per request: {self.max_results_per_request}")
+        self.headers = {}
 
 
 class ScopusClient(Client):
-    BASE_URL = "https://api.elsevier.com/content/search/scopus"
 
-    def __init__(self, api_key: str = None):
-        super().__init__()
-        config = get_api_config()["scopus"]
-        self.api_key = api_key or config["api_key"]
-        self.timeout = config["timeout"]
-        self.max_results_per_request = config["max_results_per_request"]
+    def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None):
+        # Initialize the Client class
+        super().__init__(name="scopus", api_key=api_key, api_url=api_url)
 
-        if not self.api_key:
-            raise ValueError("Scopus API key is required. Set it in your .env file.")
-
-        self.headers = {"X-ELS-APIKey": self.api_key, "Accept": "application/json"}
+        # Scopus related settings
+        self.headers["X-ELS-APIKey"] = self.api_key
+        self.headers["Accept"] = "application/json"
 
     def search(
         self,

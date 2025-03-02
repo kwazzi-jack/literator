@@ -27,6 +27,11 @@ SCOPUS_API_KEY = os.getenv("SCOPUS_API_KEY")
 if not SCOPUS_API_KEY:
     print("Warning: SCOPUS_API_KEY not found in environment variables or .env file")
 
+# API URLs
+SCOPUS_API_URL = os.getenv("SCOPUS_API_URL")
+if not SCOPUS_API_URL:
+    print("Warning: SCOPUS_API_URL not found in environment variables or .env file")
+
 # API settings
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "30"))
 MAX_RESULTS_PER_REQUEST = int(os.getenv("MAX_RESULTS_PER_REQUEST", "100"))
