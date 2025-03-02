@@ -297,7 +297,7 @@ def fetch_scopus_command(
 @fetch_cli.command("results")
 @click.option("--file", help="Specific results file to view (defaults to most recent)")
 @click.option("--count", type=int, default=10, help="Number of papers to display")
-def fetch_results_command(file, count, should_open):
+def fetch_results_command(file, count):
     """View results from a recent Scopus API call"""
     try:
         # Find the most recent results file if not specified
