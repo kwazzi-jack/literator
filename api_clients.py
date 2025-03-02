@@ -9,10 +9,15 @@ from config import get_api_config
 logger = logging.getLogger(__name__)
 
 
-class ScopusClient:
+class Client:
+    pass
+
+
+class ScopusClient(Client):
     BASE_URL = "https://api.elsevier.com/content/search/scopus"
 
     def __init__(self, api_key: str = None):
+        super().__init__()
         config = get_api_config()["scopus"]
         self.api_key = api_key or config["api_key"]
         self.timeout = config["timeout"]
@@ -187,3 +192,19 @@ class ScopusClient:
                 continue
 
         return papers
+
+
+def get_api_client(name: str) -> Client:
+    """
+    Get the API client for the specified name.
+
+    Args:
+        name: The name of the API client (e.g., 'scopus')
+
+    Returns:
+        An instance of the specified API client
+    """
+    if name == "scopus":
+        return ScopusClient()
+    else:
+        raise ValueError(f"Unknown API client: {name}")
