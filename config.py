@@ -46,6 +46,7 @@ def get_api_config() -> dict[str, Any]:
     return {
         "scopus": {
             "api_key": SCOPUS_API_KEY,
+            "api_url": SCOPUS_API_URL,
             "timeout": REQUEST_TIMEOUT,
             "max_results_per_request": MAX_RESULTS_PER_REQUEST,
         }
