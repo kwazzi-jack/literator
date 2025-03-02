@@ -219,45 +219,38 @@ def query_database(
     end_year: Optional[int] = None,
     limit: int = 100,
     print_results: bool = True,
-    save_to_json: bool = True,
-):
+) -> List[Paper]:
     """Query the database for papers"""
     try:
         papers = get_papers_from_db(query, source, start_year, end_year, limit)
         logger.info(f"Found {len(papers)} papers in database")
 
-        # Display results in a table
-        table = Table(title="Search Results")
-        table.add_column("Title")
-        table.add_column("Year")
-        table.add_column("Authors")
-        table.add_column("Source")
+        if print_results:
+            # Display results in a table
+            table = Table(title="Search Results")
+            table.add_column("Title")
+            table.add_column("Year")
+            table.add_column("Authors")
+            table.add_column("Source")
 
-        for paper in papers[:10]:  # Show first 10 papers
-            pub_year = (
-                paper.publication_date.year if paper.publication_date else "Unknown"
-            )
-            authors = ", ".join([a.name for a in paper.authors[:3]])
-            if len(paper.authors) > 3:
-                authors += " et al."
-            table.add_row(
-                paper.title[:50] + "..." if len(paper.title) > 50 else paper.title,
-                str(pub_year),
-                authors,
-                paper.source,
-            )
+            for paper in papers[:10]:  # Show first 10 papers
+                pub_year = (
+                    paper.publication_date.year if paper.publication_date else "Unknown"
+                )
+                authors = ", ".join([a.name for a in paper.authors[:3]])
+                if len(paper.authors) > 3:
+                    authors += " et al."
+                table.add_row(
+                    paper.title[:50] + "..." if len(paper.title) > 50 else paper.title,
+                    str(pub_year),
+                    authors,
+                    paper.source,
+                )
 
-        console.print(table)
+            console.print(table)
 
-        if len(papers) > 10:
-            console.print(f"[italic](Showing 10 of {len(papers)} results)[/italic]")
-
-        # Save to file if requested
-        if save_to_json:
-            save_json(
-                papers,
-                query,
-            )
+            if len(papers) > 10:
+                console.print(f"[italic](Showing 10 of {len(papers)} results)[/italic]")
 
     except Exception as e:
         logger.error(f"Error querying database: {str(e)}")
@@ -304,9 +297,6 @@ def fetch_scopus_command(
 @fetch_cli.command("results")
 @click.option("--file", help="Specific results file to view (defaults to most recent)")
 @click.option("--count", type=int, default=10, help="Number of papers to display")
-@click.option(
-    "--open", "should_open", is_flag=True, help="Open the file in default application"
-)
 def fetch_results_command(file, count, should_open):
     """View results from a recent Scopus API call"""
     try:
@@ -397,11 +387,6 @@ def fetch_results_command(file, count, should_open):
                 f"[dim italic](Showing {count} of {len(papers_dict)} papers)[/dim italic]"
             )
 
-        # Open file if requested
-        if should_open:
-            click.launch(str(file_path))
-            console.print("[green]Opening file in default application...[/green]")
-
     except Exception as e:
         logger.error(f"Error displaying results: {str(e)}")
         console.print(f"[red]Error displaying results: {str(e)}[/red]")
@@ -413,11 +398,10 @@ def papers_cli():
     pass
 
 
-@papers_cli.command("init")
+@papers_cli.command("init_db")
 def init_command():
     """Initialize the database"""
     init_db()
-    logger.info("Database initialized")
 
 
 @papers_cli.command("query")
@@ -426,16 +410,16 @@ def init_command():
 @click.option("--start-year", type=int, help="Start year for filtering results")
 @click.option("--end-year", type=int, help="End year for filtering results")
 @click.option("--limit", type=int, default=100, help="Maximum number of results")
-@click.option("--output", help="Output file path (JSON)")
-def query_command(query, source, start_year, end_year, limit, output):
+@click.option("--print-results", is_flag=True, help="Print results to console")
+def query_command(query, source, start_year, end_year, limit, print_results):
     """Query the database for papers"""
-    query_database(
+    papers: List[Paper] = query_database(
         query=query,
         source=source,
         start_year=start_year,
         end_year=end_year,
         limit=limit,
-        output_file=output,
+        print_results=print_results,
     )
 
 
