@@ -7,14 +7,13 @@ from sqlmodel import Session, SQLModel, create_engine, select, or_
 from rich.console import Console
 
 from models import Paper, PaperDB, AuthorDB, Keyword, PaperAuthorLink
-from config import VAULT_PATH
+from config import DB_PATH
 
 # Configure logging
 console = Console()
 logger = logging.getLogger("litreview.db")
 
 # Set up database
-DB_PATH = VAULT_PATH / "papers.sqlite"
 DB_URL = f"sqlite:///{DB_PATH}"
 
 # Create engine
@@ -99,7 +98,7 @@ def get_papers_from_db(
     start_year: Optional[int] = None,
     end_year: Optional[int] = None,
     limit: int = 100,
-) -> List<Paper]:
+) -> List[Paper]:
     """
     Retrieve papers from the database with optional filtering.
 
