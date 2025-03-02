@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import requests
 from datetime import datetime
 import logging
@@ -9,7 +10,40 @@ from config import get_api_config
 logger = logging.getLogger(__name__)
 
 
-class Client:
+class APIClient(ABC):
+    """Abstract base class for API clients used in literature review.
+
+    This class provides a foundation for implementing API clients that interact with
+    various academic paper databases and search services. It handles common initialization
+    tasks such as setting up API keys, URLs, and other configuration parameters.
+
+    Attributes:
+        name (str): Name identifier for the API client
+        api_key (str): Authentication key for API access
+        api_url (str): Base URL for API endpoints
+        timeout (int): Request timeout in seconds
+        max_results_per_request (int): Maximum number of results per API request
+        headers (dict): HTTP headers for API requests
+
+    Args:
+        name (str): Name identifier for the API client
+        api_key (Optional[str]): API key for authentication. If not provided,
+            will attempt to load from configuration
+        api_url (Optional[str]): Base URL for API. If not provided,
+            will attempt to load from configuration
+
+    Raises:
+        ValueError: If required API key or URL is not provided either through
+            parameters or configuration
+
+    Example:
+        ```python
+        class GoogleScholarAPI(APIClient):
+            def __init__(self):
+                super().__init__("google_scholar")
+        ```
+    """
+
     def __init__(
         self, name: str, api_key: Optional[str] = None, api_url: Optional[str] = None
     ):
@@ -45,8 +79,39 @@ class Client:
         logger.debug(f"Max results per request: {self.max_results_per_request}")
         self.headers = {}
 
+    @abstractmethod
+    def search(self, query: str) -> List[Paper]:
+        pass
 
-class ScopusClient(Client):
+    @abstractmethod
+    def parse_results(self, entries: List[Dict[str, Any]]) -> List[Paper]:
+        pass
+
+
+class ScopusClient(APIClient):
+    """
+    A client for interacting with the Scopus API to fetch academic papers.
+    This class extends the APIClient base class and provides specific functionality
+    for searching and retrieving papers from Scopus's database. It handles API
+    authentication, request formatting, response parsing, and pagination.
+    Attributes:
+        headers (dict): HTTP headers including API key and accept type for JSON
+        max_results_per_request (int): Maximum number of results per API request
+        timeout (int): Request timeout in seconds
+    Args:
+        api_key (Optional[str]): API key for authentication. If not provided,
+            will attempt to load from configuration
+        api_url (Optional[str]): Base URL for API. If not provided,
+            will attempt to load from configuration
+    Raises:
+        ValueError: If required API key or URL is not provided either through
+            parameters or configuration
+    Example:
+        ```
+        client = ScopusClient(api_key="your-api-key")
+        papers = client.search("artificial intelligence", start_year=2020, max_results=100)
+        ```
+    """
 
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None):
         # Initialize the Client class
@@ -67,13 +132,13 @@ class ScopusClient(Client):
         Search Scopus for papers matching the query.
 
         Args:
-            query: The search query
-            start_year: Optional start year for filtering results
-            end_year: Optional end year for filtering results
-            max_results: Maximum number of results to return
+            query (str): The search query
+            start_year (Optional[int], optional): Start year for filtering results. Defaults to None.
+            end_year (Optional[int], optional): End year for filtering results. Defaults to None.
+            max_results (int, optional): Maximum number of results to return. Defaults to 100.
 
         Returns:
-            List of Paper objects
+            List[Paper]: A list of Paper objects matching the search criteria
         """
         params = {
             "query": query,
@@ -103,7 +168,7 @@ class ScopusClient(Client):
                     f"Fetching results {total_fetched + 1}-{total_fetched + params['count']}..."
                 )
                 response = requests.get(
-                    self.BASE_URL,
+                    self.api_url,
                     headers=self.headers,
                     params=params,
                     timeout=self.timeout,
@@ -125,7 +190,7 @@ class ScopusClient(Client):
                     break
 
                 # Parse results
-                batch_papers = self._parse_results(entries)
+                batch_papers = self.parse_results(entries)
                 all_papers.extend(batch_papers)
 
                 total_fetched += len(entries)
@@ -141,7 +206,7 @@ class ScopusClient(Client):
             logger.error(f"Error fetching from Scopus API: {e}")
             return all_papers
 
-    def _parse_results(self, entries: List[Dict[str, Any]]) -> List[Paper]:
+    def parse_results(self, entries: List[Dict[str, Any]]) -> List[Paper]:
         """Parse Scopus API results into Paper objects."""
         papers = []
 
@@ -222,7 +287,7 @@ class ScopusClient(Client):
         return papers
 
 
-def get_api_client(name: str) -> Client:
+def get_api_client(name: str) -> APIClient:
     """
     Get the API client for the specified name.
 
