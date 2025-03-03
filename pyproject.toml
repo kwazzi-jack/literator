@@ -1,31 +1,34 @@
 [project]
-name = "litreview"
-version = "0.1.0"
-description = "Respository of tools to perform a systematic literature review analysis using the PRISMA Guidelines."
-readme = "README.md"
-authors = [
-    { name = "kwazzi-jack", email = "brianallisterwelman@gmail.com" }
-]
-requires-python = ">=3.13"
-dependencies = [
-    "click>=8.1.8",
-    "matplotlib>=3.10.0",
-    "numpy>=2.2.3",
-    "pandas>=2.2.3",
-    "pydantic>=2.10.6",
-    "python-dotenv>=1.0.1",
-    "requests>=2.32.3",
-    "rich>=13.9.4",
-    "scipy>=1.15.2",
-    "seaborn>=0.13.2",
-    "sqlmodel>=0.0.22",
-    "tqdm>=4.67.1",
-]
+    name = "literator"
+    version = "0.1.0"
+    description = "Literature review management tool"
+    readme = "README.md"
+    authors = [
+        { name = "kwazzi-jack", email = "brianallisterwelman@gmail.com" },
+    ]
+    requires-python = ">=3.8"
+    license = { text = "MIT" }
+    dependencies = [
+        "click>=8.1.8",
+        "matplotlib>=3.10.0",
+        "numpy>=2.2.3",
+        "pandas>=2.2.3",
+        "pydantic>=2.10.6",
+        "python-dotenv>=1.0.1",
+        "requests>=2.32.3",
+        "rich>=13.9.4",
+        "scipy>=1.15.2",
+        "seaborn>=0.13.2",
+        "sqlmodel>=0.0.22",
+        "tqdm>=4.67.1",
+    ]
 
-[project.scripts]
-fetch = "litreview:fetch_cli"
-papers = "litreview:papers_cli"
+    [project.scripts]
+        litreview = "litreview.cli:main"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+    requires      = ["hatchling"]
+    build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+    packages = ["src/literator"]
