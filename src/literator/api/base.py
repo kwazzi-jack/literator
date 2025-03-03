@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Literal, Optional
 
-from literator.db.models import Paper
 from literator.config import get_api_config
+from literator.db.models import Paper
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ class APIClient(ABC):
         pass
 
 
-def get_api_client(name: str) -> APIClient:
+def get_api_client(name: Literal["scopus"]) -> APIClient:
     """
     Get the API client for the specified name.
 
@@ -96,7 +96,11 @@ def get_api_client(name: str) -> APIClient:
     Returns:
         An instance of the specified API client
     """
+
     if name == "scopus":
-        return ScopusClient()
+        # Conditional import to avoid circular import
+        from literator.api.scopus import ScopusAPIClient
+
+        return ScopusAPIClient()
     else:
         raise ValueError(f"Unknown API client: {name}")
