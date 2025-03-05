@@ -1,19 +1,20 @@
-import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
-logger = logging.getLogger(__name__)
+from literator.utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class APIConfig(BaseModel):
     """Configuration for API connections with validation"""
 
-    api_key: Optional[str] = Field(None, description="API key for authentication")
-    api_url: Optional[str] = Field(None, description="Base URL for the API")
+    api_key: str = Field(..., description="API key for authentication")
+    api_url: str = Field(..., description="Base URL for the API")
     timeout: int = Field(30, gt=0, description="Request timeout in seconds")
     max_results_per_request: int = Field(
         100, gt=0, description="Maximum results per request"
@@ -79,7 +80,7 @@ class Config:
         project_root = Path(__file__).parent
 
         # Determine vault path from env or default
-        if self.env_vars.get("VAULT_PATH"):
+        if self.env_vars.get("VAULT_PATH") and len(self.env_vars["VAULT_PATH"]) > 0:
             vault_path = Path(self.env_vars["VAULT_PATH"])
             logger.info(f"Using custom vault path: {vault_path}")
         else:
@@ -109,20 +110,35 @@ class Config:
             logger.warning(
                 "SCOPUS_API_KEY not found in environment variables or .env file"
             )
+            raise ValueError("SCOPUS_API_KEY is required")
 
         scopus_api_url = os.getenv("SCOPUS_API_URL")
         if not scopus_api_url:
             logger.warning(
                 "SCOPUS_API_URL not found in environment variables or .env file"
             )
+            raise ValueError("SCOPUS_API_URL is required")
 
-        request_timeout = int(os.getenv("REQUEST_TIMEOUT", "30"))
-        max_results_per_request = int(os.getenv("MAX_RESULTS_PER_REQUEST", "100"))
-        retry_count = int(os.getenv("RETRY_COUNT", "3"))
-        retry_backoff = float(os.getenv("RETRY_BACKOFF", "1.5"))
-        connect_timeout = int(os.getenv("CONNECT_TIMEOUT", "10"))
-        user_agent = os.getenv("USER_AGENT", "Literator/1.0")
-        rate_limit_pause = float(os.getenv("RATE_LIMIT_PAUSE", "1.0"))
+        request_timeout = int(self.env_vars.get("REQUEST_TIMEOUT", "30"))
+        max_results_per_request = int(
+            self.env_vars.get("MAX_RESULTS_PER_REQUEST", "100")
+        )
+        retry_count = int(self.env_vars.get("RETRY_COUNT", "3"))
+        retry_backoff = float(self.env_vars.get("RETRY_BACKOFF", "1.5"))
+        connect_timeout = int(self.env_vars.get("CONNECT_TIMEOUT", "10"))
+        user_agent = self.env_vars.get("USER_AGENT", "Literator/1.0")
+        rate_limit_pause = float(self.env_vars.get("RATE_LIMIT_PAUSE", "1.0"))
+        logger.debug(f"{scopus_api_key=}, type={type(scopus_api_key)}")
+        logger.debug(f"{scopus_api_url=}, type={type(scopus_api_url)}")
+        logger.debug(f"{request_timeout=}, type={type(request_timeout)}")
+        logger.debug(
+            f"{max_results_per_request=}, type={type(max_results_per_request)}"
+        )
+        logger.debug(f"{retry_count=}, type={type(retry_count)}")
+        logger.debug(f"{retry_backoff=}, type={type(retry_backoff)}")
+        logger.debug(f"{connect_timeout=}, type={type(connect_timeout)}")
+        logger.debug(f"{user_agent=}, type={type(user_agent)}")
+        logger.debug(f"{rate_limit_pause=}, type={type(rate_limit_pause)}")
 
         self.scopus = APIConfig(
             api_key=scopus_api_key,
