@@ -1,17 +1,13 @@
 """Core functionality for the litreview tool."""
 
 import json
-import logging
-import sys
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Dict, List, Literal, Optional
+from typing import List, Literal, Optional
 
+from literator.utils.logging import get_logger
 from rich.console import Console
-from rich.logging import RichHandler
 
 from literator.api import APIClient, get_api_client
-from .config import REQUESTS_DIR
+from literator.config import REQUESTS_DIR
 from literator.db import (
     get_papers_from_db,
     init_db,
@@ -19,31 +15,9 @@ from literator.db import (
 )
 from literator.db import Paper
 
-# Configure logging with Rich
+# Get logger
+logger = get_logger(__name__)
 console = Console()
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(console=console, rich_tracebacks=True)],
-)
-logger = logging.getLogger("litreview")
-
-
-# Fallback logging configuration if Rich is not available
-def setup_basic_logging():
-    """Setup basic logging if Rich logging fails"""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[logging.StreamHandler(sys.stdout)],
-    )
-    return logging.getLogger("litreview")
-
-
-def get_timestamp() -> str:
-    """Get the current timestamp in a format suitable for filenames."""
-    return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
 
 def save_json(
@@ -178,7 +152,7 @@ def fetch_papers(
 
 
 def query_database(
-    query: str = None,
+    query: str,
     source: Optional[Literal["scopus"]] = None,
     start_year: Optional[int] = None,
     end_year: Optional[int] = None,
