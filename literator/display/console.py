@@ -4,7 +4,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from rich.console import Console
 from rich.panel import Panel
@@ -12,40 +12,40 @@ from rich.table import Table
 
 from literator.utils.logging import get_logger
 from literator.config import REQUESTS_DIR
-from literator.db import init_db, Paper
+from literator.db import init_db, Paper, Author
 
 # Setup console for rich output
 console = Console()
 logger = get_logger(__name__)
 
 
-# def display_stats():
-#     """Display statistics about the database"""
-#     try:
-#         init_db()  # Ensure database is initialized
-#         # stats = get_stats()
+def display_stats():
+    """Display statistics about the database"""
+    try:
+        init_db()  # Ensure database is initialized
+        stats = get_stats()
 
-#         console.print("\n[bold blue]Database Statistics[/bold blue]")
-#         console.print(f"Total papers: {stats['total_papers']}")
-#         console.print(f"Total authors: {stats['total_authors']}")
+        console.print("\n[bold blue]Database Statistics[/bold blue]")
+        console.print(f"Total papers: {stats['total_papers']}")
+        console.print(f"Total authors: {stats['total_authors']}")
 
-#         # Display papers by source in a table
-#         table = Table(title="Papers by Source")
-#         table.add_column("Source")
-#         table.add_column("Count")
+        # Display papers by source in a table
+        table = Table(title="Papers by Source")
+        table.add_column("Source")
+        table.add_column("Count")
 
-#         for source, count in stats["papers_by_source"].items():
-#             table.add_row(source, str(count))
+        for source, count in stats["papers_by_source"].items():
+            table.add_row(source, str(count))
 
-#         console.print(table)
+        console.print(table)
 
-#         # Display top keywords
-#         console.print("\n[bold]Top Keywords:[/bold]")
-#         for kw, count in stats["top_keywords"].items():
-#             console.print(f"  {kw}: {count}")
+        # Display top keywords
+        console.print("\n[bold]Top Keywords:[/bold]")
+        for kw, count in stats["top_keywords"].items():
+            console.print(f"  {kw}: {count}")
 
-#     except Exception as e:
-#         logger.error(f"Error getting statistics: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error getting statistics: {str(e)}")
 
 
 def display_query_results(papers: List[Paper]):
@@ -75,7 +75,7 @@ def display_query_results(papers: List[Paper]):
         console.print(f"[italic](Showing 10 of {len(papers)} results)[/italic]")
 
 
-def display_results(file: Optional[str] = None, count: int = 10):
+def display_request_results(file: Optional[str] = None, count: int = 10):
     """View results from a recent API call"""
     try:
         # Find the most recent results file if not specified
@@ -105,20 +105,22 @@ def display_results(file: Optional[str] = None, count: int = 10):
 
         # Read the JSON file
         with open(file_path, "r", encoding="utf-8") as f:
-            results_dict: Dict[str, str] = json.load(f)
+            results_dict: Dict[str, Any] = json.load(f)
 
         # Load results values
-        query = results_dict.get("query", "Unknown")
-        timestamp = results_dict.get("timestamp")
+        query: str = results_dict.get("query", "Unknown")
+        timestamp: Optional[str] = results_dict.get("timestamp")
         if timestamp:
             timestamp_str = datetime.strptime(timestamp, "%Y%m%d_%H%M%S")
             timestamp = timestamp_str.strftime("%Y-%m-%d %H:%M:%S")
         else:
             timestamp = "Unknown"
-        start_year = results_dict.get("start_year")
-        end_year = results_dict.get("end_year")
-        source = results_dict.get("source", "Unknown")
-        papers_dict = results_dict.get("papers", {})
+        start_year: str = results_dict.get("start_year", "N/A")
+        end_year: str = results_dict.get("end_year", "N/A")
+        source: str = results_dict.get("source", "Unknown")
+
+        papers_list = results_dict.get("papers", [])
+        papers: List[Paper] = [Paper(**paper_dict) for paper_dict in papers_list]
 
         # Display basic info with colors
         console.print(
@@ -126,7 +128,7 @@ def display_results(file: Optional[str] = None, count: int = 10):
                 "\n".join(
                     [
                         f"[bold blue]Request file:[/bold blue] [cyan]{file_path}[/cyan]",
-                        f"[bold blue]Total papers:[/bold blue] [green]{len(papers_dict)}[/green]",
+                        f"[bold blue]Total papers:[/bold blue] [green]{len(papers)}[/green]",
                         f"[bold blue]Query:[/bold blue] '[yellow]{query}[/yellow]'",
                         f"[bold blue]Timestamp:[/bold blue] [magenta]{timestamp}[/magenta]",
                         f"[bold blue]Source:[/bold blue] [yellow]{source.capitalize()}[/yellow]",
@@ -153,13 +155,14 @@ def display_results(file: Optional[str] = None, count: int = 10):
         table.add_column("Authors", width=30, style="yellow")
         table.add_column("Journal", width=30, style="blue", overflow="fold")
 
-        for i, paper in enumerate(papers_dict[:count]):
+        for i, paper in enumerate(papers[:count]):
             # Extract data from the paper dict
-            title = paper.get("title", "Unknown")
+            title = paper.title or "Unknown"
 
             # Get year from publication date
             year = "?"
-            if pub_date := paper.get("publication_date"):
+            if paper.publication_date:
+                pub_date = str(paper.publication_date)
                 try:
                     year = pub_date.split("-")[0]  # Get year from YYYY-MM-DD
                 except (IndexError, AttributeError):
@@ -167,14 +170,17 @@ def display_results(file: Optional[str] = None, count: int = 10):
 
             # Format authors
             authors = "Unknown"
-            if paper_authors := paper.get("authors", []):
-                author_names = [a.get("name", "Unknown") for a in paper_authors[:2]]
+            paper_authors: List[Author] = paper.authors or []
+            if paper_authors:
+                author_names = [
+                    author.name or "Unknown" for author in paper_authors[:2]
+                ]
                 authors = ", ".join(author_names)
                 if len(paper_authors) > 2:
                     authors += " et al."
 
             # Format journal - don't truncate, let rich handle wrapping
-            journal = paper.get("journal", "Unknown")
+            journal: str = paper.journal or "Unknown"
 
             # Format number
             row_num = str(i + 1)
@@ -185,9 +191,9 @@ def display_results(file: Optional[str] = None, count: int = 10):
 
         console.print(table)
 
-        if len(papers_dict) > count:
+        if len(papers) > count:
             console.print(
-                f"[dim italic](Showing {count} of {len(papers_dict)} papers)[/dim italic]"
+                f"[dim italic](Showing {count} of {len(papers)} papers)[/dim italic]"
             )
 
     except Exception as e:
