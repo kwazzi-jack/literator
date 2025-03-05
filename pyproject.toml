@@ -9,6 +9,7 @@
     requires-python = ">=3.13"
     license = { text = "MIT" }
     dependencies = [
+        "appdirs>=1.4.4",
         "click>=8.1.8",
         "matplotlib>=3.10.0",
         "numpy>=2.2.3",
@@ -21,7 +22,7 @@
         "seaborn>=0.13.2",
         "sqlmodel>=0.0.22",
         "tqdm>=4.67.1",
-    ]
+]
 
     [project.scripts]
         literator = "literator.cli.base:main"
