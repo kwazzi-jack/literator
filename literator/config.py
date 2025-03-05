@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict
 
+import appdirs
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
@@ -156,7 +157,14 @@ class Config:
     def initialize_db_settings(self) -> None:
         """Set up database configuration"""
         logger.debug("Initializing database settings")
-        db_path = self.paths.vault_path / "litreview.db"
+
+        # Use appdirs to get the system-appropriate data directory
+        data_dir = Path(appdirs.user_data_dir("literator", "literator"))
+        data_dir.mkdir(exist_ok=True, parents=True)
+
+        # Set database path in the system data directory
+        db_path = data_dir / "litreview.db"
+
         db_exists = db_path.exists()
         if db_exists:
             logger.info(f"Database file found at {db_path}")
