@@ -20,7 +20,7 @@ class APIConfig(BaseModel):
         100, gt=0, description="Maximum results per request"
     )
     retry_count: int = Field(
-        3, gt=3, description="Number of retry attempts for failed requests"
+        3, gt=0, description="Number of retry attempts for failed requests"
     )
     retry_backoff: float = Field(
         1.5, gt=0.0, description="Exponential backoff factor for retries"
