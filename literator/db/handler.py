@@ -3,11 +3,12 @@ from typing import List, Optional, Dict, Any
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func as sqlalchemy_func
-from sqlmodel import Session, SQLModel, create_engine, select, or_
+from sqlmodel import Session, SQLModel, create_engine, select, or_, col
 from rich.console import Console
 
 from literator.db.models import Paper, PaperDB, AuthorDB, Keyword, PaperAuthorLink
 from literator.config import get_db_config
+from literator.utils import str_to_datetime
 
 # Configure logging
 console = Console()
@@ -124,25 +125,35 @@ def get_papers_from_db(
             statement = statement.where(PaperDB.source == source)
 
         if start_year:
+            start_date = str_to_datetime(f"{start_year}-01-01", "%Y-%m-%d")
+            # Properly handle the date comparison
             statement = statement.where(
                 or_(
-                    PaperDB.publication_date is None,
-                    PaperDB.publication_date >= f"{start_year}-01-01",
+                    PaperDB.publication_date is None,  # Handle None values
+                    PaperDB.publication_date is not None
+                    and PaperDB.publication_date >= start_date,
                 )
             )
 
         if end_year:
+            end_date = str_to_datetime("{end_year}-12-31", "%Y-%m-%d")
+            # Properly handle the date comparison
             statement = statement.where(
                 or_(
-                    PaperDB.publication_date is None,
-                    PaperDB.publication_date <= f"{end_year}-12-31",
+                    PaperDB.publication_date is None,  # Handle None values
+                    PaperDB.publication_date is not None
+                    and PaperDB.publication_date >= end_date,
                 )
             )
 
         if query:
             query_term = f"%{query}%"
+            # Use SQLAlchemy's column expressions for LIKE operations
             statement = statement.where(
-                or_(PaperDB.title.like(query_term), PaperDB.abstract.like(query_term))
+                or_(
+                    col(PaperDB.title).like(query_term),
+                    col(PaperDB.abstract).like(query_term),
+                )
             )
 
         statement = statement.limit(limit)
@@ -169,28 +180,33 @@ def get_papers_from_db(
 def get_paper_count() -> int:
     """Get the total number of papers in the database"""
     with Session(engine) as session:
-        return session.exec(select(PaperDB)).count()
+        # Use proper counting with SQLModel
+        statement = select(sqlalchemy_func.count()).select_from(PaperDB)
+        return session.exec(statement).one()
 
 
 def get_stats() -> Dict[str, Any]:
     """Get statistics about the database"""
     with Session(engine) as session:
-        total_papers = session.exec(select(PaperDB)).count()
-        total_authors = session.exec(select(AuthorDB)).count()
+        # Get total papers using SQLAlchemy function
+        paper_count_stmt = select(sqlalchemy_func.count()).select_from(PaperDB)
+        total_papers = session.exec(paper_count_stmt).one()
+
+        # Get total authors using SQLAlchemy function
+        author_count_stmt = select(sqlalchemy_func.count()).select_from(AuthorDB)
+        total_authors = session.exec(author_count_stmt).one()
 
         # Count papers by source
-        sources_query = select(
-            PaperDB.source, sqlalchemy_func.count(PaperDB.uid)
-        ).group_by(PaperDB.source)
+        sources_query = select(PaperDB.source, sqlalchemy_func.count()).group_by(
+            PaperDB.source
+        )
         sources = {source: count for source, count in session.exec(sources_query).all()}
 
         # Get the 10 most common keywords
         keywords_query = (
-            select(
-                Keyword.keyword, sqlalchemy_func.count(Keyword.keyword).label("count")
-            )
+            select(Keyword.keyword, sqlalchemy_func.count())
             .group_by(Keyword.keyword)
-            .order_by(sqlalchemy_func.count(Keyword.keyword).desc())
+            .order_by(sqlalchemy_func.count().desc())
             .limit(10)
         )
         top_keywords = {kw: count for kw, count in session.exec(keywords_query).all()}
