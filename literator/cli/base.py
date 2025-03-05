@@ -2,20 +2,30 @@
 
 import click
 
-from ..core import fetch_papers, query_database
-from literator.display import display_stats, display_results
+from literator.utils.logging import setup_logging
+from literator.core import fetch_papers, query_database
+from literator.display import display_stats
 from literator.db import init_db
 
 
 @click.group()
-def main():
+@click.option("--debug", is_flag=True, help="Enable debug logging")
+@click.pass_context
+def main(ctx, debug):
     """Literature review management tool."""
-    pass
+    # Initialize logging early
+    logger = setup_logging(debug=debug)
+
+    # Store debug setting in context for subcommands
+    ctx.ensure_object(dict)
+    ctx.obj["DEBUG"] = debug
+    ctx.obj["LOGGER"] = logger
 
 
 # Fetch command group
 @main.group(name="fetch")
-def fetch_cli():
+@click.pass_context
+def fetch_cli(ctx):
     """Fetch and manage papers for literature review"""
     pass
 
@@ -56,12 +66,13 @@ def fetch_scopus_command(
 @click.option("--count", type=int, default=10, help="Number of papers to display")
 def fetch_results_command(file: str, count: int):
     """View results from a recent Scopus API call"""
-    display_results(file, count)
+    # display_results(file, count)
 
 
 # Papers command group
 @main.group(name="papers")
-def papers_cli():
+@click.pass_context
+def papers_cli(ctx):
     """Manage papers in the database"""
     pass
 

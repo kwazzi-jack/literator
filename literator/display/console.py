@@ -2,50 +2,50 @@
 
 import json
 import os
-import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from literator.utils.logging import get_logger
 from literator.config import REQUESTS_DIR
-from literator.db import get_stats, init_db, Paper
+from literator.db import init_db, Paper
 
 # Setup console for rich output
 console = Console()
-logger = logging.getLogger("litreview")
+logger = get_logger(__name__)
 
 
-def display_stats():
-    """Display statistics about the database"""
-    try:
-        init_db()  # Ensure database is initialized
-        stats = get_stats()
+# def display_stats():
+#     """Display statistics about the database"""
+#     try:
+#         init_db()  # Ensure database is initialized
+#         # stats = get_stats()
 
-        console.print("\n[bold blue]Database Statistics[/bold blue]")
-        console.print(f"Total papers: {stats['total_papers']}")
-        console.print(f"Total authors: {stats['total_authors']}")
+#         console.print("\n[bold blue]Database Statistics[/bold blue]")
+#         console.print(f"Total papers: {stats['total_papers']}")
+#         console.print(f"Total authors: {stats['total_authors']}")
 
-        # Display papers by source in a table
-        table = Table(title="Papers by Source")
-        table.add_column("Source")
-        table.add_column("Count")
+#         # Display papers by source in a table
+#         table = Table(title="Papers by Source")
+#         table.add_column("Source")
+#         table.add_column("Count")
 
-        for source, count in stats["papers_by_source"].items():
-            table.add_row(source, str(count))
+#         for source, count in stats["papers_by_source"].items():
+#             table.add_row(source, str(count))
 
-        console.print(table)
+#         console.print(table)
 
-        # Display top keywords
-        console.print("\n[bold]Top Keywords:[/bold]")
-        for kw, count in stats["top_keywords"].items():
-            console.print(f"  {kw}: {count}")
+#         # Display top keywords
+#         console.print("\n[bold]Top Keywords:[/bold]")
+#         for kw, count in stats["top_keywords"].items():
+#             console.print(f"  {kw}: {count}")
 
-    except Exception as e:
-        logger.error(f"Error getting statistics: {str(e)}")
+#     except Exception as e:
+#         logger.error(f"Error getting statistics: {str(e)}")
 
 
 def display_query_results(papers: List[Paper]):
@@ -75,7 +75,7 @@ def display_query_results(papers: List[Paper]):
         console.print(f"[italic](Showing 10 of {len(papers)} results)[/italic]")
 
 
-def display_results(file: str = None, count: int = 10):
+def display_results(file: Optional[str] = None, count: int = 10):
     """View results from a recent API call"""
     try:
         # Find the most recent results file if not specified
@@ -154,7 +154,6 @@ def display_results(file: str = None, count: int = 10):
         table.add_column("Journal", width=30, style="blue", overflow="fold")
 
         for i, paper in enumerate(papers_dict[:count]):
-
             # Extract data from the paper dict
             title = paper.get("title", "Unknown")
 
