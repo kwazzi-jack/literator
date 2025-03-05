@@ -10,15 +10,14 @@ from typing import Dict, List, Literal, Optional
 from rich.console import Console
 from rich.logging import RichHandler
 
-from .api_clients import APIClient, get_api_client
+from literator.api import APIClient, get_api_client
 from .config import REQUESTS_DIR
-from .db_handler import (
+from literator.db import (
     get_papers_from_db,
     init_db,
     save_papers_to_db,
-    get_paper_count,
 )
-from .models import Paper
+from literator.db import Paper
 
 # Configure logging with Rich
 console = Console()
@@ -153,8 +152,6 @@ def fetch_papers(
                 init_db()  # Ensure database is initialized
                 added_count = save_papers_to_db(papers)
                 logger.info(f"Added {added_count} new papers to the database")
-                total_papers = get_paper_count()
-                logger.info(f"Database now contains {total_papers} papers")
             except Exception as e:
                 logger.error(f"Error saving to database: {str(e)}")
 
@@ -207,7 +204,7 @@ def query_database(
         logger.info(f"Found {len(papers)} papers in database")
 
         if print_results:
-            from .display.display import display_query_results
+            from literator.display import display_query_results
 
             display_query_results(papers)
 

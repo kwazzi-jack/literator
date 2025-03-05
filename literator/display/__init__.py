@@ -1,3 +1,2 @@
-"""Literature review management tool."""
-
-__version__ = "0.1.0"
+# Export functions
+from literator.display.console import display_stats, display_query_results
