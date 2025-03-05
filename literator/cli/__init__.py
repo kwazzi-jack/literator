@@ -1,3 +1,9 @@
-"""Literature review management tool."""
+"""Command Line Interface (CLI) module for Literator.
 
-__version__ = "0.1.0"
+This submodule contains the command-line interface components and functionality
+for the Literator software. It handles command parsing, user input processing,
+and execution of commands through the terminal.
+
+The CLI provides a user-friendly interface for interacting with Literator's
+core functionality without requiring direct code manipulation.
+"""

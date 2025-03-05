@@ -1,3 +1,7 @@
-"""Literature review management tool."""
+"""Utility functions for the Literator package."""
 
-__version__ = "0.1.0"
+# Expose module
+from literator.utils.functions import get_timestamp
+from literator.utils.logging import setup_logging, get_logger
+
+__all__ = ["get_timestamp", "setup_logging", "get_logger"]
