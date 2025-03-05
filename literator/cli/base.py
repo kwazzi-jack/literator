@@ -3,8 +3,8 @@
 import click
 
 from ..core import fetch_papers, query_database
-from ..display.display import display_stats, display_results
-from .db_handler import init_db
+from literator.display import display_stats, display_results
+from literator.db import init_db
 
 
 @click.group()
