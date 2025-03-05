@@ -11,9 +11,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from .config import REQUESTS_DIR
-from .db_handler import get_stats, init_db
-from .models import Paper
+from literator.config import REQUESTS_DIR
+from literator.db import get_stats, init_db, Paper
 
 # Setup console for rich output
 console = Console()
