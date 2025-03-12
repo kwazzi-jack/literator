@@ -1,13 +1,19 @@
 from datetime import datetime
-from typing import Optional, Sequence, TypeAlias, Union
+from typing import List, Tuple, TypeAlias, Union
 
-# Input types
-StrInput: TypeAlias = Union[str, Sequence[str]]
-BoolInput: TypeAlias = Union[bool, Sequence[bool]]
+from result import Result
 
-# Output types
-StrOutput: TypeAlias = Optional[Union[str, Sequence[str]]]
-BoolOutput: TypeAlias = Optional[Union[bool, Sequence[bool]]]
+from literator.utils.errors import FlagErr, PhraseErr
 
-# Other types
-Date: TypeAlias = Optional[datetime]
+# Generic Types
+Phrase: TypeAlias = str
+Flag: TypeAlias = bool
+Date: TypeAlias = datetime
+
+# Collection Types
+Phrases: TypeAlias = Union[List[Phrase], Tuple[Phrase]]
+Flags: TypeAlias = Union[List[Flag], Tuple[Flag]]
+
+# Result types
+PhraseResult: TypeAlias = Result[Union[Phrase, Phrases], PhraseErr]
+FlagResult: TypeAlias = Result[Union[Flag, Flags], FlagErr]
