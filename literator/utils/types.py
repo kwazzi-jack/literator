@@ -3,7 +3,7 @@ from typing import List, Tuple, TypeAlias, Union
 
 from result import Result
 
-from literator.utils.errors import FlagErr, PhraseErr
+from literator.utils.errors import FlagError, PhraseError, ValidationError
 
 # Generic Types
 Phrase: TypeAlias = str
@@ -14,6 +14,15 @@ Date: TypeAlias = datetime
 Phrases: TypeAlias = Union[List[Phrase], Tuple[Phrase]]
 Flags: TypeAlias = Union[List[Flag], Tuple[Flag]]
 
+# Input Types
+PhraseInput: TypeAlias = Union[Phrase, Phrases]
+FlagInput: TypeAlias = Union[Flag, Flags]
+
+# Output Types
+PhraseOutput: TypeAlias = Union[Phrase, Phrases]
+FlagOutput: TypeAlias = Union[Flag, Flags]
+
 # Result types
-PhraseResult: TypeAlias = Result[Union[Phrase, Phrases], PhraseErr]
-FlagResult: TypeAlias = Result[Union[Flag, Flags], FlagErr]
+ValidationResult: TypeAlias = Result[None, ValidationError]
+PhraseResult: TypeAlias = Result[PhraseOutput, PhraseError]
+FlagResult: TypeAlias = Result[FlagOutput, FlagError]
