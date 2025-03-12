@@ -3,6 +3,9 @@
 # Expose module
 from literator.utils.errors import (
     Error,
+    DateError,
+    DatePatternError,
+    DateEmptyError,
     StrError,
     StrEmptyError,
     ValidationError,
@@ -19,6 +22,7 @@ from literator.utils.functions import get_timestamp, str_to_datetime, format_phr
 from literator.utils.logging import setup_logging, get_logger
 from literator.utils.types import (
     Date,
+    DateResult,
     Flag,
     FlagInput,
     FlagResult,
@@ -33,6 +37,9 @@ from literator.utils.types import (
 __all__ = [
     # Errors
     "Error",
+    "DateError",
+    "DatePatternError",
+    "DateEmptyError",
     "StrError",
     "StrEmptyError",
     "ValidationError",
@@ -52,6 +59,7 @@ __all__ = [
     "get_logger",
     # Types
     "Date",
+    "DateResult",
     "Flag",
     "FlagInput",
     "FlagResult",
