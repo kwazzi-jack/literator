@@ -5,6 +5,24 @@ class Error(Exception):
     """Base class for all exceptions raised by Literator."""
 
 
+class DateError(Error):
+    """Base class for exceptions related to date formatting."""
+
+
+class DatePatternError(DateError):
+    """Raised when the date pattern is invalid."""
+
+    def __init__(self, value: Any):
+        super().__init__(f"Date pattern expects a string. Got {type(value)} instead.")
+
+
+class DateEmptyError(DateError):
+    """Raised when the date value is empty."""
+
+    def __init__(self):
+        super().__init__("Date input cannot be empty.")
+
+
 class StrError(Error):
     """Base class for exceptions related to string formatting."""
 
