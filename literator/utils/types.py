@@ -6,8 +6,8 @@ StrInput: TypeAlias = Union[str, Sequence[str]]
 BoolInput: TypeAlias = Union[bool, Sequence[bool]]
 
 # Output types
-StrOutput: TypeAlias = Union[str, Sequence[str]]
-BoolOutput: TypeAlias = Union[bool, Sequence[bool]]
+StrOutput: TypeAlias = Optional[Union[str, Sequence[str]]]
+BoolOutput: TypeAlias = Optional[Union[bool, Sequence[bool]]]
 
 # Other types
 Date: TypeAlias = Optional[datetime]
