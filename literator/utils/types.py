@@ -15,6 +15,7 @@ Phrases: TypeAlias = Union[List[Phrase], Tuple[Phrase]]
 Flags: TypeAlias = Union[List[Flag], Tuple[Flag]]
 
 # Input Types
+DateInput: TypeAlias = Union[str, Date]
 PhraseInput: TypeAlias = Union[Phrase, Phrases]
 FlagInput: TypeAlias = Union[Flag, Flags]
 
@@ -23,6 +24,7 @@ PhraseOutput: TypeAlias = Union[Phrase, Phrases]
 FlagOutput: TypeAlias = Union[Flag, Flags]
 
 # Result types
+DateResult: TypeAlias = Result[DateInput, StrError]
 StrResult: TypeAlias = Result[str, StrError]
 ValidationResult: TypeAlias = Result[None, ValidationError]
 PhraseResult: TypeAlias = Result[PhraseOutput, PhraseError]
