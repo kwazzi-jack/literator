@@ -5,29 +5,29 @@ class Error(Exception):
     """Base class for all exceptions raised by Literator."""
 
 
-class ValidationErr(Error):
+class ValidationError(Error):
     """Base class for exceptions related to validation."""
 
 
-class PhraseErr(ValidationErr):
+class PhraseError(ValidationError):
     """Base class for exceptions related to phrase formatting."""
 
 
-class PhraseEmptyError(PhraseErr):
+class PhraseEmptyError(PhraseError):
     """Raised when the phrase value is problematic."""
 
     def __init__(self):
         super().__init__("Phrase input cannot be empty.")
 
 
-class PhrasesEmptyError(PhraseErr):
+class PhrasesEmptyError(PhraseError):
     """Raised when the phrase value is problematic."""
 
     def __init__(self):
         super().__init__("Phrase sequence input cannot be empty.")
 
 
-class PhraseTypeErr(PhraseErr):
+class PhraseTypeError(PhraseError):
     """Raised when the phrase input is of an invalid type."""
 
     def __init__(self, value: Any):
@@ -36,7 +36,7 @@ class PhraseTypeErr(PhraseErr):
         )
 
 
-class PhrasesTypeErr(PhraseErr):
+class PhrasesTypeError(PhraseError):
     """Raised when the phrase input is of an invalid type."""
 
     def __init__(self, index: int, value: Any):
@@ -45,18 +45,18 @@ class PhrasesTypeErr(PhraseErr):
         )
 
 
-class FlagErr(ValidationErr):
+class FlagError(ValidationError):
     """Base class for exceptions related to flag formatting."""
 
 
-class FlagsEmptyErr(FlagErr):
+class FlagsEmptyError(FlagError):
     """Raised when the flag input is empty."""
 
     def __init__(self):
         super().__init__("Flag sequence input cannot be empty.")
 
 
-class FlagTypeError(FlagErr):
+class FlagTypeError(FlagError):
     """Raised when the flag input is of an invalid type."""
 
     def __init__(self, value: Any):
@@ -65,7 +65,7 @@ class FlagTypeError(FlagErr):
         )
 
 
-class FlagsTypeErr(FlagErr):
+class FlagsTypeError(FlagError):
     """Raised when the flag input is of an invalid type."""
 
     def __init__(self, index: int, value: Any):
@@ -74,7 +74,7 @@ class FlagsTypeErr(FlagErr):
         )
 
 
-class LengthMismatchErr(PhraseErr, FlagErr):
+class LengthMismatchError(PhraseError, FlagError):
     """Raised when the lengths of phrase and flag inputs do not match."""
 
     def __init__(self, phrases: Any, flags: Any):
