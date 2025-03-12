@@ -3,6 +3,8 @@
 # Expose module
 from literator.utils.errors import (
     Error,
+    StrError,
+    StrEmptyError,
     ValidationError,
     PhraseError,
     PhraseEmptyError,
@@ -31,6 +33,8 @@ from literator.utils.types import (
 __all__ = [
     # Errors
     "Error",
+    "StrError",
+    "StrEmptyError",
     "ValidationError",
     "PhraseError",
     "PhraseEmptyError",

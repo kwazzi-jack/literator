@@ -3,7 +3,7 @@ from typing import List, Tuple, TypeAlias, Union
 
 from result import Result
 
-from literator.utils.errors import FlagError, PhraseError, ValidationError
+from literator.utils.errors import FlagError, PhraseError, StrError, ValidationError
 
 # Generic Types
 Phrase: TypeAlias = str
@@ -23,6 +23,7 @@ PhraseOutput: TypeAlias = Union[Phrase, Phrases]
 FlagOutput: TypeAlias = Union[Flag, Flags]
 
 # Result types
+StrResult: TypeAlias = Result[str, StrError]
 ValidationResult: TypeAlias = Result[None, ValidationError]
 PhraseResult: TypeAlias = Result[PhraseOutput, PhraseError]
 FlagResult: TypeAlias = Result[FlagOutput, FlagError]

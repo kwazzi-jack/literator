@@ -5,6 +5,17 @@ class Error(Exception):
     """Base class for all exceptions raised by Literator."""
 
 
+class StrError(Error):
+    """Base class for exceptions related to string formatting."""
+
+
+class StrEmptyError(StrError):
+    """Raised when the string value is empty."""
+
+    def __init__(self):
+        super().__init__("String input cannot be empty.")
+
+
 class ValidationError(Error):
     """Base class for exceptions related to validation."""
 
