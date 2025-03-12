@@ -5,14 +5,29 @@ class Error(Exception):
     """Base class for all exceptions raised by Literator."""
 
 
-class PhraseEmptyError(Error):
-    """Raised when the phrase input is empty."""
+class ValidationErr(Error):
+    """Base class for exceptions related to validation."""
+
+
+class PhraseErr(ValidationErr):
+    """Base class for exceptions related to phrase formatting."""
+
+
+class PhraseEmptyError(PhraseErr):
+    """Raised when the phrase value is problematic."""
 
     def __init__(self):
         super().__init__("Phrase input cannot be empty.")
 
 
-class PhraseTypeError(Error):
+class PhrasesEmptyError(PhraseErr):
+    """Raised when the phrase value is problematic."""
+
+    def __init__(self):
+        super().__init__("Phrase sequence input cannot be empty.")
+
+
+class PhraseTypeErr(PhraseErr):
     """Raised when the phrase input is of an invalid type."""
 
     def __init__(self, value: Any):
@@ -21,14 +36,27 @@ class PhraseTypeError(Error):
         )
 
 
-class FlagEmptyError(Error):
+class PhrasesTypeErr(PhraseErr):
+    """Raised when the phrase input is of an invalid type."""
+
+    def __init__(self, index: int, value: Any):
+        super().__init__(
+            f"Expected phrase input to be string at index {index}. Got {type(value)} instead."
+        )
+
+
+class FlagErr(ValidationErr):
+    """Base class for exceptions related to flag formatting."""
+
+
+class FlagsEmptyErr(FlagErr):
     """Raised when the flag input is empty."""
 
     def __init__(self):
-        super().__init__("Flag input cannot be empty.")
+        super().__init__("Flag sequence input cannot be empty.")
 
 
-class FlagTypeError(Error):
+class FlagTypeError(FlagErr):
     """Raised when the flag input is of an invalid type."""
 
     def __init__(self, value: Any):
@@ -37,10 +65,19 @@ class FlagTypeError(Error):
         )
 
 
-class PhraseAndFlagLengthError(Error):
+class FlagsTypeErr(FlagErr):
+    """Raised when the flag input is of an invalid type."""
+
+    def __init__(self, index: int, value: Any):
+        super().__init__(
+            f"Expected flag input to be boolean at index {index}. Got {type(value)} instead."
+        )
+
+
+class LengthMismatchErr(PhraseErr, FlagErr):
     """Raised when the lengths of phrase and flag inputs do not match."""
 
-    def __init__(self, phrase: Any, flag: Any):
+    def __init__(self, phrases: Any, flags: Any):
         super().__init__(
-            f"Phrase and flag inputs must have the same length. Got {len(phrase)} and {len(flag)} instead."
+            f"Phrases and flags must have the same length. Got {len(phrases)} and {len(flags)} instead."
         )
